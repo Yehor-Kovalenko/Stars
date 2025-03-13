@@ -1,0 +1,423 @@
+<!--GOOD VERSION----------------------------------------------------------------------------------->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night Sky Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { 
+            background-color: #0a0e1a; 
+            margin: 0; 
+            overflow: hidden; 
+            color: white; 
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            display: block;
+        }
+        #controls { 
+            position: absolute; 
+            top: 5%; 
+            left: 50%;  
+            transform: translate(-50%);
+            z-index: 10;
+            background-color: rgba(25, 29, 41, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        input, button {
+            margin: 0 5px;
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #666;
+            background-color: #222;
+            color: white;
+        }
+        button {
+            background-color: #334;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #445;
+        }
+        #constellation-info {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: #aaa;
+        }
+        .constellation-label {
+            position: absolute;
+            color: rgba(150, 200, 255, 0.8);
+            font-size: 12px;
+            pointer-events: none;
+        }
+        #status {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: yellow;
+            font-size: 16px;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <form id="skyForm">
+            <label for="date">Date:</label>
+            <input type="date" id="date">
+            <label for="latitude">Latitude:</label>
+            <input type="number" id="latitude" step="0.01" value="43.6532">
+            <label for="longitude">Longitude:</label>
+            <input type="number" id="longitude" step="0.01" value="-79.3832">
+            <button type="submit">Show Sky</button>
+            <label for="showLabels">
+                <input type="checkbox" id="showLabels" checked> Show Labels
+            </label>
+        </form>
+    </div>
+    <div id="constellation-info"></div>
+    <div id="status"></div>
+    <canvas id="skyCanvas"></canvas>
+    
+    <script>
+        const canvas = document.getElementById("skyCanvas");
+        const ctx = canvas.getContext("2d");
+        const constellationInfo = document.getElementById("constellation-info");
+        const statusDiv = document.getElementById("status");
+        let constellationData = [];
+        let starData = [];
+        
+        // Resize canvas to fill window
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if (starData.length > 0) {
+                updateSkyMap();
+            }
+        }
+
+        skyForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            updateSkyMap();
+        });
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function toRadians(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        function localSiderealTime(date, longitude) {
+            const JD = (Date.parse(date) / 86400000) + 2440587.5;
+            const T = (JD - 2451545.0) / 36525;
+            let GMST = 280.46061837 + 360.98564736629 * (JD - 2451545) + T * T * (0.000387933 - T / 38710000);
+            GMST = (GMST % 360 + 360) % 360;
+            return (GMST + longitude) % 360;
+        }
+
+        function equatorialToHorizontal(ra, dec, lat, lst) {
+            const H = (lst - ra + 360) % 360;
+            const Hrad = toRadians(H);
+            const Decrad = toRadians(dec);
+            const Latrad = toRadians(lat);
+            
+            const alt = Math.asin(Math.sin(Decrad) * Math.sin(Latrad) + Math.cos(Decrad) * Math.cos(Latrad) * Math.cos(Hrad));
+            const az = Math.atan2(-Math.sin(Hrad), Math.tan(Decrad) * Math.cos(Latrad) - Math.sin(Latrad) * Math.cos(Hrad));
+            
+            return [az * (180 / Math.PI), alt * (180 / Math.PI)];
+        }
+
+        async function loadStars() {
+            statusDiv.textContent = "Loading star data...";
+            
+            try {
+                const starsUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/stars.6.json";
+                const constellationsUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.lines.json";
+                const constellationsNamesUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.json";
+                
+                const [starsResp, constLinesResp, constNamesResp] = await Promise.all([
+                    fetch(starsUrl),
+                    fetch(constellationsUrl),
+                    fetch(constellationsNamesUrl)
+                ]);
+                
+                const starsData = await starsResp.json();
+                const constellationsData = await constLinesResp.json();
+                const constellationsNames = await constNamesResp.json();
+                
+                // Check data format and log it for debugging
+                console.log("Constellations Names:", constellationsNames);
+                
+                // Handle data format issue - constellationsNames might be an object with a 'features' property
+                const namesList = Array.isArray(constellationsNames) ? constellationsNames : 
+                                  (constellationsNames.features || []);
+                
+                // Merge constellation data with names
+                const constellationsWithNames = constellationsData.features.map(constellation => {
+                    // Find the name data by id
+                    let nameData = null;
+                    for (let i = 0; i < namesList.length; i++) {
+                        if (namesList[i].id === constellation.id) {
+                            nameData = namesList[i];
+                            break;
+                        }
+                    }
+                    
+                    return {
+                        ...constellation,
+                        properties: {
+                            ...constellation.properties,
+                            name: nameData ? nameData.name : constellation.id
+                        }
+                    };
+                });
+                
+                statusDiv.textContent = "Star data loaded successfully!";
+                setTimeout(() => { statusDiv.textContent = ""; }, 3000);
+                
+                return { 
+                    stars: starsData.features, 
+                    constellations: constellationsWithNames
+                };
+            } catch (error) {
+                console.error("Error loading star data:", error);
+                statusDiv.textContent = "Error loading star data. Using fallback data.";
+                
+                // Fallback to simple basic data
+                return {
+                    stars: [],
+                    constellations: []
+                };
+            }
+        }
+        
+        function transformCoords(az, alt) {
+            const radius = Math.min(canvas.width, canvas.height) / 2 * 0.9;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const r = (90 - alt) / 90 * radius;
+            const px = centerX + r * Math.sin(toRadians(az));
+            const py = centerY - r * Math.cos(toRadians(az));
+            return [px, py];
+        }
+        
+        function getMagnitudeSize(mag) {
+            // Make brighter stars (smaller magnitude) appear larger
+            return Math.max(0.5, (5 - mag * 0.8)/2);
+        }
+        
+        function getStarColor(bv) {
+            // B-V color index to RGB
+            if (bv < -0.3) return "#9bb0ff"; // Hot blue
+            else if (bv < 0.0) return "#aabfff"; // Blue
+            else if (bv < 0.3) return "#cad7ff"; // Blue-white
+            else if (bv < 0.6) return "#f8f7ff"; // White
+            else if (bv < 1.0) return "#fff4ea"; // Yellow-white
+            else if (bv < 1.5) return "#ffd2a1"; // Yellow
+            else return "#ffcc6f";               // Orange
+        }
+        
+        function drawStars(stars, lat, lst) {
+            stars.forEach(star => {
+                const [ra, dec] = star.geometry.coordinates;
+                const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+                
+                if (alt > 0) {
+                    const [px, py] = transformCoords(az, alt);
+                    const mag = star.properties.mag || 5;
+                    const bv = star.properties.bv || 0;
+                    const size = getMagnitudeSize(mag);
+                    
+                    ctx.fillStyle = getStarColor(bv);
+                    ctx.beginPath();
+                    ctx.arc(px, py, size, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // For brightest stars only
+                    if (mag < 1.5 && star.properties.name) {
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                        ctx.font = "10px Arial";
+                        ctx.textAlign = "center";
+                        ctx.fillText(star.properties.name, px, py - size - 3);
+                    }
+                }
+            });
+        }
+        
+        function drawConstellations(constellations, lat, lst) {
+            // Clear existing labels
+            document.querySelectorAll('.constellation-label').forEach(el => el.remove());
+            
+            // Draw constellation lines with improved visibility
+            constellations.forEach(constellation => {
+                const points = [];
+                let validPoints = 0;
+                const centerPoint = [0, 0];
+                
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(120, 140, 220, 0.6)";
+                ctx.lineWidth = 1;
+                
+                constellation.geometry.coordinates.forEach(([ra, dec], index) => {
+                    const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+                    
+                    if (alt > 0) {
+                        const [px, py] = transformCoords(az, alt);
+                        points.push([px, py]);
+                        centerPoint[0] += px;
+                        centerPoint[1] += py;
+                        validPoints++;
+                        
+                        if (index === 0) {
+                            ctx.moveTo(px, py);
+                        } else {
+                            ctx.lineTo(px, py);
+                        }
+                    }
+                });
+                
+                ctx.stroke();
+                
+                // Add constellation label if we have valid points and labels are enabled
+                //TODO bug validpoints are 0
+                if (validPoints > 0 && document.getElementById("showLabels").checked) {
+                    centerPoint[0] /= validPoints;
+                    centerPoint[1] /= validPoints;
+                    
+                    const label = document.createElement("div");
+                    label.className = "constellation-label";
+                    label.textContent = constellation.properties.name || constellation.id;
+                    label.style.left = `${centerPoint[0]}px`;
+                    label.style.top = `${centerPoint[1]}px`;
+                    document.body.appendChild(label);
+                }
+            });
+            
+            // Update constellation count
+            // const visibleConstellations = constellations.filter(c => {
+            //     // A constellation is visible if at least one point is above horizon
+            //     return c.geometry.coordinates.some(([ra, dec]) => {
+            //         const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+            //         return alt > 0;
+            //     });
+            // });
+            const visibleConstellations = constellations;
+            
+            constellationInfo.textContent = `Visible Constellations: ${visibleConstellations.length}`;
+        }
+
+        function drawHorizon() {
+            // Draw horizon circle
+            const radius = Math.min(canvas.width, canvas.height) / 2 * 0.9;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = "rgba(100, 100, 150, 0.5)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Draw cardinal directions
+            const directions = [
+                { angle: 0, text: "N" },
+                { angle: 90, text: "E" },
+                { angle: 180, text: "S" },
+                { angle: 270, text: "W" }
+            ];
+            
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "rgba(180, 180, 220, 0.8)";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            directions.forEach(dir => {
+                const [px, py] = transformCoords(dir.angle, 0);
+                ctx.fillText(dir.text, px, py);
+            });
+        }
+
+        function drawCaption(location, date) {
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("NIGHT SKY MAP", canvas.width / 2, canvas.height - 80);
+            ctx.fillText(location, canvas.width / 2, canvas.height - 50);
+            ctx.fillText(date, canvas.width / 2, canvas.height - 20);
+        }
+        
+        async function initializeData() {
+            // Load data once
+            try {
+                const data = await loadStars();
+                starData = data.stars;
+                constellationData = data.constellations;
+                updateSkyMap();
+            } catch (error) {
+                console.error("Failed to initialize data:", error);
+                statusDiv.textContent = "Failed to load star data. Please try again.";
+            }
+        }
+        
+        function updateSkyMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Use current date if not specified
+            const dateInput = document.getElementById("date");
+            if (!dateInput.value) {
+                const today = new Date();
+                dateInput.value = today.toISOString().split('T')[0];
+            }
+            
+            const date = dateInput.value;
+            const lat = parseFloat(document.getElementById("latitude").value);
+            const lon = parseFloat(document.getElementById("longitude").value);
+            const lst = localSiderealTime(date, lon);
+            
+            // Draw sky background gradient
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, 0,
+                canvas.width/2, canvas.height/2, Math.min(canvas.width, canvas.height) / 2
+            );
+            gradient.addColorStop(0, "#0a0e1a");
+            gradient.addColorStop(1, "#000005");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw only if data is loaded
+            if (constellationData.length > 0 && starData.length > 0) {
+                drawHorizon();
+                drawConstellations(constellationData, lat, lst);
+                drawStars(starData, lat, lst);
+                
+                // Format the date nicely
+                const formattedDate = new Date(date).toLocaleDateString('en-US', {
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric'
+                });
+                
+                drawCaption(`Lat: ${lat.toFixed(2)}°, Lon: ${lon.toFixed(2)}°`, formattedDate);
+            } else {
+                statusDiv.textContent = "No star data available. Try reloading the page.";
+            }
+        }
+        
+        // Initialize
+        initializeData();
+        
+        // Add event listener for checkbox
+        document.getElementById("showLabels").addEventListener("change", updateSkyMap);
+    </script>
+</body>
+</html>
+<!------------------------------------------------------------------------------------->
