@@ -29,7 +29,7 @@
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
         
-        .navbar-container {
+        .navbar-container, .date-fact {
             background-color: rgba(30, 41, 59, 0.6);
             padding: 20px;
             border-radius: 10px;
@@ -39,13 +39,18 @@
         
         .date-carousel {
             position: relative;
-            overflow: hidden;
+            display:flex;
+            overflow-x: hidden; /* Allow horizontal scrolling, but no vertical cropping */
+            overflow-y: visible; /* Ensure the glow/frame effect isn't cropped */
             padding: 10px 50px;
         }
         
         .carousel-inner {
             display: flex;
+            align-items: center; /* Ensure buttons are centered */
+            flex-wrap: nowrap;
             transition: transform 0.5s ease;
+            overflow: visible; /* Allow effects outside of container */
         }
         
         .date-button {
@@ -69,7 +74,25 @@
         
         .date-button.active {
             background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-            box-shadow: 0 0 15px rgba(167, 139, 250, 0.7);
+            box-shadow: 0 0 5px 5px rgba(167, 139, 250, 0.7); /* Soft glow */
+            padding: 10px 22px; /* Adjust for consistent size */
+            position: relative;
+            z-index: 1;
+            animation: glow 1.5s infinite;
+        }
+
+        .date-button.active::before {
+           content: "";
+           position: absolute;
+           top: -10px;
+           left: -10px;
+           right: -10px;
+           bottom: -10px;
+           border-radius: 6px;
+           border: 2px solid white;
+           box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+           z-index: -1;
+           animation: frameGlow 1.5s infinite;
         }
         
         .carousel-control {
@@ -128,6 +151,16 @@
             50% { text-shadow: 0 0 20px #a78bfa, 0 0 30px #a78bfa; }
             100% { text-shadow: 0 0 5px #a78bfa, 0 0 10px #a78bfa; }
         }
+        /* @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(167, 139, 250, 0.7); }
+            50% { box-shadow: 0 0 20px rgba(167, 139, 250, 1); }
+        } */
+
+        /* Frame glow animation */
+        @keyframes frameGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.6); }
+            50% { box-shadow: 0 0 25px rgba(255, 255, 255, 1); }
+        }
         
         .glow-text {
             animation: glow 2s infinite;
@@ -144,14 +177,14 @@
 </head>
 <body>
     <header>
-        <h1 class="glow-text">Space Explorer</h1>
+        <h1 class="glow-text">Personal Stars</h1>
     </header>
     
     <div class="navbar-container">
         <div class="date-carousel">
             <button class="carousel-control prev">&#9664;</button>
             <div class="carousel-inner">
-                <button class="date-button active" data-date="2024-09-03">Sep 03, 2024</button>
+                <button class="date-button" data-date="2024-09-03">Sep 03, 2024</button>
                 <button class="date-button" data-date="2024-09-07">Sep 07, 2024</button>
                 <button class="date-button" data-date="2024-09-14">Sep 14, 2024</button>
                 <button class="date-button" data-date="2024-09-22">Sep 22, 2024</button>
@@ -167,9 +200,12 @@
             </div>
         </div>
     </div>
+    <div class="date-fact">
+        <!-- dynamically generated content-->
+    </div>
     
     <div class="content-container">
-        <iframe id="content-frame" src="facts.html?date=2023-03-15" title="Content Frame"></iframe>
+        <iframe id="content-frame" src="facts.html?date=" title="Content Frame"></iframe>
     </div>
     
     <!-- Bootstrap Bundle with Popper -->
@@ -183,6 +219,7 @@
             const nextButton = document.querySelector('.carousel-control.next');
             const dateButtons = document.querySelectorAll('.date-button');
             
+            let idx = 0;
             let scrollPosition = 0;
             const buttonWidth = 140; // Width of button + margin
             
@@ -194,7 +231,15 @@
             });
             
             nextButton.addEventListener('click', function() {
-                const maxScroll = (dateButtons.length * buttonWidth) - carouselInner.parentElement.clientWidth + 100;
+                // Calculate the total width of all buttons
+                const totalButtonsWidth = dateButtons.length * buttonWidth;
+
+                // Calculate the available width for the carousel
+                const carouselWidth = carouselInner.parentElement.clientWidth;
+                            
+                // Calculate the maximum scroll position
+                const maxScroll = Math.max(0, totalButtonsWidth - carouselWidth + 20); // Add a small buffer
+
                 if (scrollPosition < maxScroll) {
                     scrollPosition += buttonWidth;
                     carouselInner.style.transform = `translateX(-${scrollPosition}px)`;
@@ -202,7 +247,7 @@
             });
             
             // Date button selection
-            let currentDate = '2023-03-15';
+            let currentDate = new Date();
             let currentView = 'facts';
             
             dateButtons.forEach(button => {
@@ -225,13 +270,39 @@
                     updateContent();
                 });
             });
+
+            // gets fact about that specific date
+            function getDateFact(date) {
+                let factsDiv = document.querySelector(".date-fact");
+                let activeButton = document.querySelector(".date-button.active");
+                // facts
+                const dateFacts = [
+                    { date: "2024-09-03", fact: "On this day, a space probe discovered a new exoplanet!" },
+                    { date: "2024-09-07", fact: "Astronomers detected an unusual radio signal from deep space." },
+                    { date: "2024-09-14", fact: "A rare planetary alignment was visible from Earth." },
+                    { date: "2024-09-22", fact: "A new moon crater was discovered by scientists." },
+                    { date: "2025-02-22", fact: "A meteor shower lit up the night sky across several continents." }
+                ];
+                let factText = "";
+                if (!activeButton) {
+                    factText = "Today dupa";
+                } else {
+                    let factEntry = dateFacts.find(entry => entry.date === date);
+                    factText = factEntry ? factEntry.fact : "No fact available for this date.";
+                }
+        
+                factsDiv.innerHTML = `<p>${factText}</p>`;
+            }
             
             // Update content based on date and view selection
             function updateContent() {
                 const contentFrame = document.getElementById('content-frame');
                 const targetUrl = `${currentView}.html?date=${currentDate}`;
                 contentFrame.src = targetUrl;
+                getDateFact(currentDate);
             }
+
+            getDateFact(currentDate);
         });
     </script>
 </body>
