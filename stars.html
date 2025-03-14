@@ -81,11 +81,19 @@
             <label for="showLabels">
                 <input type="checkbox" id="showLabels" checked> Show Labels
             </label>
+            <label for="showMilkyWay">
+                <input type="checkbox" id="showMilkyWay" checked> Milky Way
+            </label>
         </form>
     </div>
     <div id="constellation-info"></div>
     <div id="status"></div>
     <canvas id="skyCanvas"></canvas>
+    <div id="constellation-popup" style="display: none; position: absolute; background-color: rgba(25, 29, 41, 0.9); border-radius: 8px; padding: 15px; color: white; max-width: 300px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 100;">
+        <h3 id="popup-title" style="margin-top: 0; color: #8af;"></h3>
+        <p id="popup-description"></p>
+        <button id="close-popup" style="background-color: #334; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Close</button>
+    </div>
     
     <script>
         const canvas = document.getElementById("skyCanvas");
@@ -94,6 +102,7 @@
         const statusDiv = document.getElementById("status");
         let constellationData = [];
         let starData = [];
+        let milkyWayData = [];
         
         // Resize canvas to fill window
         function resizeCanvas() {
@@ -125,16 +134,36 @@
         }
 
         function equatorialToHorizontal(ra, dec, lat, lst) {
+            // Validate inputs
+            if (isNaN(ra) || isNaN(dec) || isNaN(lat) || isNaN(lst)) {
+                console.error(`Invalid input: RA=${ra}, DEC=${dec}, LAT=${lat}, LST=${lst}`);
+                return [NaN, NaN];
+            }
+
+            // Calculate hour angle (H)
             const H = (lst - ra + 360) % 360;
             const Hrad = toRadians(H);
             const Decrad = toRadians(dec);
             const Latrad = toRadians(lat);
-            
-            const alt = Math.asin(Math.sin(Decrad) * Math.sin(Latrad) + Math.cos(Decrad) * Math.cos(Latrad) * Math.cos(Hrad));
-            const az = Math.atan2(-Math.sin(Hrad), Math.tan(Decrad) * Math.cos(Latrad) - Math.sin(Latrad) * Math.cos(Hrad));
-            
-            return [az * (180 / Math.PI), alt * (180 / Math.PI)];
+
+            // Calculate altitude (alt) and azimuth (az)
+            const sinAlt = Math.sin(Decrad) * Math.sin(Latrad) + 
+                           Math.cos(Decrad) * Math.cos(Latrad) * Math.cos(Hrad);
+            const altClamped = Math.max(-1, Math.min(1, sinAlt)); // Clamp to avoid floating point errors
+            const alt = Math.asin(altClamped);
+
+            const sinAz = -Math.sin(Hrad) * Math.cos(Decrad) / Math.cos(alt);
+            const cosAz = (Math.sin(Decrad) - Math.sin(Latrad) * Math.sin(alt)) / 
+                          (Math.cos(Latrad) * Math.cos(alt));
+            const az = Math.atan2(sinAz, cosAz);
+
+            // Convert to degrees
+            const azDeg = (az * 180 / Math.PI + 360) % 360;
+            const altDeg = alt * 180 / Math.PI;
+
+            return [azDeg, altDeg];
         }
+
 
         async function loadStars() {
             statusDiv.textContent = "Loading star data...";
@@ -143,16 +172,19 @@
                 const starsUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/stars.6.json";
                 const constellationsUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.lines.json";
                 const constellationsNamesUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.json";
+                const milkyWayUrl = "https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/milkyway.json";
                 
-                const [starsResp, constLinesResp, constNamesResp] = await Promise.all([
+                const [starsResp, constLinesResp, constNamesResp, milkyWayResp] = await Promise.all([
                     fetch(starsUrl),
                     fetch(constellationsUrl),
-                    fetch(constellationsNamesUrl)
+                    fetch(constellationsNamesUrl),
+                    fetch(milkyWayUrl)
                 ]);
                 
                 const starsData = await starsResp.json();
                 const constellationsData = await constLinesResp.json();
                 const constellationsNames = await constNamesResp.json();
+                const milkyWayData = await milkyWayResp.json();
                 
                 // Check data format and log it for debugging
                 console.log("Constellations Names:", constellationsNames);
@@ -176,7 +208,7 @@
                         ...constellation,
                         properties: {
                             ...constellation.properties,
-                            name: nameData ? nameData.name : constellation.id
+                            name: nameData ? nameData.properties.name : constellation.id
                         }
                     };
                 });
@@ -186,7 +218,8 @@
                 
                 return { 
                     stars: starsData.features, 
-                    constellations: constellationsWithNames
+                    constellations: constellationsWithNames,
+                    milkyWay: milkyWayData.features
                 };
             } catch (error) {
                 console.error("Error loading star data:", error);
@@ -195,7 +228,8 @@
                 // Fallback to simple basic data
                 return {
                     stars: [],
-                    constellations: []
+                    constellations: [],
+                    milkyWay: []
                 };
             }
         }
@@ -225,10 +259,216 @@
             else if (bv < 1.5) return "#ffd2a1"; // Yellow
             else return "#ffcc6f";               // Orange
         }
+
+        function drawMilkyWay(milkyWayData, lat, lst) {
+            if (!milkyWayData || milkyWayData.length === 0 || !document.getElementById("showMilkyWay").checked) return;
+
+            // Create an off-screen canvas for better blending
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = canvas.width;
+            offCanvas.height = canvas.height;
+            const offCtx = offCanvas.getContext('2d');
+
+            // Draw different layers of the Milky Way with varying opacity and color
+            const layers = [
+                { opacity: 0.05, color: "rgba(180, 180, 255, 1)" }, // Faint outer edge, bluish
+                { opacity: 0.1, color: "rgba(220, 220, 255, 1)" },  // Mid layer, light blue
+                { opacity: 0.15, color: "rgba(255, 250, 240, 1)" }, // Inner layer, warm white
+                { opacity: 0.2, color: "rgba(255, 240, 220, 1)" }   // Core, yellowish
+            ];
+
+            milkyWayData.forEach((feature, featureIndex) => {
+                if (!feature.geometry || !feature.geometry.coordinates) return;
+
+                // Choose layer based on feature index or properties
+                const layerIndex = featureIndex % layers.length;
+                const layer = layers[layerIndex];
+
+                // Set blending mode for a more natural glow
+                offCtx.globalCompositeOperation = "screen";
+
+                feature.geometry.coordinates.forEach(polygon => {
+                    if (!Array.isArray(polygon) || polygon.length === 0) return;
+
+                    offCtx.beginPath();
+                    let firstPoint = true;
+
+                    // Draw the polygon
+                    polygon.forEach(coordinates => {
+                        if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+
+                        const ra = coordinates[0];
+                        const dec = coordinates[1];
+
+                        const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+
+                        if (alt > 0) {
+                            const [px, py] = transformCoords(az, alt);
+
+                            if (firstPoint) {
+                                offCtx.moveTo(px, py);
+                                firstPoint = false;
+                            } else {
+                                offCtx.lineTo(px, py);
+                            }
+                        }
+                    });
+
+                    // Apply varying styles based on density/brightness
+                    const brightness = feature.properties?.brightness || 1;
+                    const adjustedOpacity = layer.opacity * (0.7 + brightness * 0.3);
+
+                    // Fill with semi-transparent color
+                    offCtx.closePath();
+                    offCtx.fillStyle = layer.color;
+                    offCtx.globalAlpha = adjustedOpacity;
+                    offCtx.fill();
+
+                    // Add a subtle blur effect to each layer
+                    offCtx.filter = `blur(${2 + layerIndex}px)`;
+                    offCtx.fill();
+                    offCtx.filter = "none";
+                });
+            });
+
+            // Add stars/sparkles effect within the Milky Way
+            addMilkyWayStars(offCtx, milkyWayData, lat, lst);
+
+            // Restore normal drawing settings
+            offCtx.globalAlpha = 1;
+            offCtx.globalCompositeOperation = "source-over";
+
+            // Draw the off-screen canvas onto the main canvas
+            ctx.drawImage(offCanvas, 0, 0);
+        }
+
+        // Add small bright points to represent dense star clusters in the Milky Way
+        function addMilkyWayStars(context, milkyWayData, lat, lst) {
+            // Dense star areas in the Milky Way
+            const starDensity = 100; // Number of stars to add
+
+            context.globalCompositeOperation = "lighten";
+
+            // Create a collection of points within the Milky Way area
+            const milkyWayPoints = [];
+
+            milkyWayData.forEach(feature => {
+                if (!feature.geometry || !feature.geometry.coordinates) return;
+
+                feature.geometry.coordinates.forEach(polygon => {
+                    if (!Array.isArray(polygon) || polygon.length === 0) return;
+
+                    polygon.forEach((coordinates, i) => {
+                        // Only sample some points to reduce computation
+                        if (i % 3 !== 0) return;
+
+                        if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+
+                        const ra = coordinates[0];
+                        const dec = coordinates[1];
+
+                        const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+
+                        if (alt > 0) {
+                            const [px, py] = transformCoords(az, alt);
+                            milkyWayPoints.push([px, py]);
+                        }
+                    });
+                });
+            });
+
+            // Draw random bright spots within the Milky Way
+            for (let i = 0; i < starDensity && milkyWayPoints.length > 0; i++) {
+                const pointIndex = Math.floor(Math.random() * milkyWayPoints.length);
+                const [px, py] = milkyWayPoints[pointIndex];
+
+                // Randomize the appearance
+                const size = Math.random() * 1.5 + 0.5;
+                const brightness = Math.random() * 0.5 + 0.5;
+
+                // Vary the color slightly
+                const r = 220 + Math.floor(Math.random() * 35);
+                const g = 220 + Math.floor(Math.random() * 35);
+                const b = 255;
+
+                // Create a glow effect
+                const gradient = context.createRadialGradient(px, py, 0, px, py, size * 2);
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${brightness})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+                context.fillStyle = gradient;
+                context.beginPath();
+                context.arc(px, py, size * 2, 0, Math.PI * 2);
+                context.fill();
+
+                // Add a bright center
+                context.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                context.beginPath();
+                context.arc(px, py, size * 0.5, 0, Math.PI * 2);
+                context.fill();
+            }
+
+            // For the galactic core - add extra brightness
+            if (milkyWayPoints.length > 0) {
+                // Assume the center of the Milky Way is around Sagittarius
+                const sagittariusRA = 266; // Approximate RA of galactic center
+                const sagittariusDEC = -29; // Approximate Dec of galactic center
+
+                const [az, alt] = equatorialToHorizontal(sagittariusRA, sagittariusDEC, lat, lst);
+
+                if (alt > 0) {
+                    const [px, py] = transformCoords(az, alt);
+
+                    // Create a bright core effect
+                    const coreGradient = context.createRadialGradient(px, py, 0, px, py, 50);
+                    coreGradient.addColorStop(0, "rgba(255, 240, 220, 0.5)");
+                    coreGradient.addColorStop(0.4, "rgba(255, 220, 180, 0.3)");
+                    coreGradient.addColorStop(1, "rgba(255, 220, 180, 0)");
+
+                    context.fillStyle = coreGradient;
+                    context.beginPath();
+                    context.arc(px, py, 50, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+
+            context.globalCompositeOperation = "source-over";
+        }
+
         
+        // function drawStars(stars, lat, lst) {
+        //     stars.forEach(star => {
+        //         const [ra, dec] = star.geometry.coordinates;
+        //         const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+                
+        //         if (alt > 0) {
+        //             const [px, py] = transformCoords(az, alt);
+        //             const mag = star.properties.mag || 5;
+        //             const bv = star.properties.bv || 0;
+        //             const size = getMagnitudeSize(mag);
+                    
+        //             ctx.fillStyle = getStarColor(bv);
+        //             ctx.beginPath();
+        //             ctx.arc(px, py, size, 0, 2 * Math.PI);
+        //             ctx.fill();
+                    
+        //             // For brightest stars only
+        //             if (mag < 1.5 && star.properties.name) {
+        //                 ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        //                 ctx.font = "10px Arial";
+        //                 ctx.textAlign = "center";
+        //                 ctx.fillText(star.properties.name, px, py - size - 3);
+        //             }
+        //         }
+        //     });
+        // }
         function drawStars(stars, lat, lst) {
             stars.forEach(star => {
                 const [ra, dec] = star.geometry.coordinates;
+            
+                // Log RA, DEC, LAT, LST to verify values
+                console.log(`Processing star with RA: ${ra}, DEC: ${dec}, LAT: ${lat}, LST: ${lst}`);
+                
                 const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
                 
                 if (alt > 0) {
@@ -252,67 +492,227 @@
                 }
             });
         }
+
         
         function drawConstellations(constellations, lat, lst) {
             // Clear existing labels
             document.querySelectorAll('.constellation-label').forEach(el => el.remove());
-            
+            console.log("Drawing constellations, count:", constellations.length);
+
+            const constellationHitboxes = [];
+
             // Draw constellation lines with improved visibility
             constellations.forEach(constellation => {
-                const points = [];
-                let validPoints = 0;
-                const centerPoint = [0, 0];
-                
-                ctx.beginPath();
-                ctx.strokeStyle = "rgba(120, 140, 220, 0.6)";
-                ctx.lineWidth = 1;
-                
-                constellation.geometry.coordinates.forEach(([ra, dec], index) => {
-                    const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
-                    
-                    if (alt > 0) {
-                        const [px, py] = transformCoords(az, alt);
-                        points.push([px, py]);
-                        centerPoint[0] += px;
-                        centerPoint[1] += py;
-                        validPoints++;
-                        
-                        if (index === 0) {
-                            ctx.moveTo(px, py);
-                        } else {
-                            ctx.lineTo(px, py);
-                        }
+                const name = constellation.properties.name || constellation.id;
+                console.log("Processing constellation:", name);
+
+                // Check if coordinates are valid
+                if (!constellation.geometry || !constellation.geometry.coordinates || !Array.isArray(constellation.geometry.coordinates)) {
+                    console.error("Invalid constellation data format:", constellation);
+                    return;
+                }
+                let allPoints = [];
+                let validPointsCount = 0;
+                let centerX = 0, centerY = 0;
+
+                // Process each line segment in the constellation
+                constellation.geometry.coordinates.forEach(line => {
+                    if (!Array.isArray(line)) {
+                        console.error("Invalid line data:", line);
+                        return;
                     }
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = "rgba(120, 140, 220, 0.6)";
+                    ctx.lineWidth = 1;
+
+                    let firstPoint = true;
+
+                    // Process each point in the line
+                    line.forEach(point => {
+                        if (!Array.isArray(point) || point.length < 2) {
+                            console.error("Invalid point data:", point);
+                            return;
+                        }
+
+                        const ra = point[0];
+                        const dec = point[1];
+
+                        // Check if the coordinates are valid numbers
+                        if (isNaN(ra) || isNaN(dec)) {
+                            console.error("Invalid coordinates:", ra, dec);
+                            return;
+                        }
+
+                        const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+
+                        if (isNaN(az) || isNaN(alt)) {
+                            console.error("Invalid converted coordinates:", az, alt);
+                            return;
+                        }
+
+                        if (alt > 0) {
+                            const [px, py] = transformCoords(az, alt);
+
+                            if (firstPoint) {
+                                ctx.moveTo(px, py);
+                                firstPoint = false;
+                            } else {
+                                ctx.lineTo(px, py);
+                            }
+
+                            // Track valid points for label positioning
+                            allPoints.push([px, py]);
+                            centerX += px;
+                            centerY += py;
+                            validPointsCount++;
+                        }
+                    });
+
+                    ctx.stroke();
                 });
-                
-                ctx.stroke();
-                
-                // Add constellation label if we have valid points and labels are enabled
-                //TODO bug validpoints are 0
-                if (validPoints > 0 && document.getElementById("showLabels").checked) {
-                    centerPoint[0] /= validPoints;
-                    centerPoint[1] /= validPoints;
-                    
+
+                // Add label if there are valid points
+                if (validPointsCount > 0 && document.getElementById("showLabels").checked) {
+                    centerX /= validPointsCount;
+                    centerY /= validPointsCount;
+
                     const label = document.createElement("div");
                     label.className = "constellation-label";
-                    label.textContent = constellation.properties.name || constellation.id;
-                    label.style.left = `${centerPoint[0]}px`;
-                    label.style.top = `${centerPoint[1]}px`;
+                    label.textContent = name;
+                    label.style.left = `${centerX}px`;
+                    label.style.top = `${centerY}px`;
+                    // Store constellation info for click detection
+                    // Calculate bounding box for the constellation
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    allPoints.forEach(point => {
+                        minX = Math.min(minX, point[0]);
+                        minY = Math.min(minY, point[1]);
+                        maxX = Math.max(maxX, point[0]);
+                        maxY = Math.max(maxY, point[1]);
+                    });
+
+                    // Add padding to the bounding box
+                    const padding = 20;
+                    minX -= padding;
+                    minY -= padding;
+                    maxX += padding;
+                    maxY += padding;
+
+                    // Store the constellation info and its bounding box
+                    constellationHitboxes.push({
+                        name: name,
+                        id: constellation.id,
+                        box: {minX, minY, maxX, maxY},
+                        center: {x: centerX, y: centerY},
+                        description: constellation.properties.description || getConstellationDescription(name)
+                    });
                     document.body.appendChild(label);
                 }
             });
-            
+            // Add click listener to the canvas
+            canvas.onclick = function(event) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Check if click is within any constellation bounding box
+                for (let i = 0; i < constellationHitboxes.length; i++) {
+                    const hitbox = constellationHitboxes[i].box;
+                    if (x >= hitbox.minX && x <= hitbox.maxX && y >= hitbox.minY && y <= hitbox.maxY) {
+                        showConstellationInfo(constellationHitboxes[i], event.clientX, event.clientY);
+                        return;
+                    }
+                }
+
+                // If click is not on any constellation, hide the popup
+                hideConstellationInfo();
+            };
+
             // Update constellation count
-            // const visibleConstellations = constellations.filter(c => {
-            //     // A constellation is visible if at least one point is above horizon
-            //     return c.geometry.coordinates.some(([ra, dec]) => {
-            //         const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
-            //         return alt > 0;
-            //     });
-            // });
-            const visibleConstellations = constellations;
-            
+            const visibleConstellations = constellations.filter(c => {
+                if (!c.geometry || !c.geometry.coordinates) return false;
+
+                // Check if any point in any line is above horizon
+                return c.geometry.coordinates.some(line => {
+                    if (!Array.isArray(line)) return false;
+
+                    return line.some(point => {
+                        if (!Array.isArray(point) || point.length < 2) return false;
+
+                        const [ra, dec] = point;
+                        if (isNaN(ra) || isNaN(dec)) return false;
+
+                        const [az, alt] = equatorialToHorizontal(ra, dec, lat, lst);
+                        return !isNaN(alt) && alt > 0;
+                    });
+                });
+            });
+
             constellationInfo.textContent = `Visible Constellations: ${visibleConstellations.length}`;
+        } 
+        
+        // Function to show constellation info popup
+        function showConstellationInfo(constellation, clientX, clientY) {
+            const popup = document.getElementById('constellation-popup');
+            const title = document.getElementById('popup-title');
+            const description = document.getElementById('popup-description');
+
+            title.textContent = constellation.name;
+            description.textContent = constellation.description;
+
+            // Position the popup near the click but ensure it's visible
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const popupWidth = 300; // Max width of the popup
+
+            // Calculate position to ensure popup stays within viewport
+            let left = clientX + 10;
+            if (left + popupWidth > viewportWidth) {
+                left = clientX - popupWidth - 10;
+            }
+
+            let top = clientY + 10;
+            if (top + 200 > viewportHeight) { // Assume max height of 200px
+                top = clientY - 200 - 10;
+            }
+
+            popup.style.left = `${left}px`;
+            popup.style.top = `${top}px`;
+            popup.style.display = 'block';
+        }
+
+        // Function to hide constellation info popup
+        function hideConstellationInfo() {
+            const popup = document.getElementById('constellation-popup');
+            popup.style.display = 'none';
+        }
+
+        // Function to get constellation descriptions
+        function getConstellationDescription(name) {
+            // Basic descriptions for common constellations
+            const descriptions = {
+                "Orion": "One of the most recognizable constellations, representing the hunter from Greek mythology. Contains the bright stars Betelgeuse and Rigel.",
+                "Ursa Major": "The Great Bear, which contains the Big Dipper. One of the most prominent constellations in the northern sky.",
+                "Ursa Minor": "The Little Bear, which contains the North Star (Polaris) at the end of its tail.",
+                "Cassiopeia": "Named after the queen in Greek mythology, recognizable by its distinctive W shape.",
+                "Cygnus": "The Swan, also known as the Northern Cross. Located along the Milky Way.",
+                "Lyra": "A small constellation containing the bright star Vega, one of the brightest stars in the night sky.",
+                "Scorpius": "Represents the scorpion that killed Orion in Greek mythology. Contains the bright red star Antares.",
+                "Leo": "Represents the Nemean Lion from the 12 labors of Hercules. Contains the bright star Regulus.",
+                "Gemini": "The Twins, representing Castor and Pollux from Greek mythology.",
+                "Taurus": "The Bull, containing the bright star Aldebaran and the Pleiades star cluster.",
+                "Aquila": "The Eagle, containing the bright star Altair.",
+                "Canis Major": "The Great Dog, containing Sirius, the brightest star in the night sky.",
+                "Andromeda": "Named after the princess in Greek mythology. Contains the Andromeda Galaxy, the nearest major galaxy to the Milky Way.",
+                "Pisces": "The Fish, representing Venus and Cupid in Roman mythology.",
+                "Sagittarius": "The Archer, pointing towards the center of the Milky Way galaxy.",
+                "Draco": "The Dragon, a circumpolar constellation in the northern sky.",
+                "Boötes": "The Herdsman, containing the bright star Arcturus.",
+                "Perseus": "Named after the hero in Greek mythology who slew Medusa."
+            };
+
+            return descriptions[name] || `${name} is one of the 88 modern constellations recognized by the International Astronomical Union.`;
         }
 
         function drawHorizon() {
@@ -361,6 +761,7 @@
                 const data = await loadStars();
                 starData = data.stars;
                 constellationData = data.constellations;
+                milkyWayData = data.milkyWay;
                 updateSkyMap();
             } catch (error) {
                 console.error("Failed to initialize data:", error);
@@ -382,7 +783,7 @@
                 // Convert string date to Date object
                 const dateString = urlParams.get('date');
                 today = new Date(dateString);
-                
+
                 // Fallback in case the date is invalid
                 if (isNaN(today.getTime())) {
                     today = new Date();
@@ -391,7 +792,7 @@
                 // Default to today if no date parameter
                 today = new Date();
             }
-            
+
             // Format the date as YYYY-MM-DD
             const date = today.toISOString().split('T')[0];
             
@@ -410,11 +811,17 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw only if data is loaded
-            if (constellationData.length > 0 && starData.length > 0) {
+            if (starData.length > 0) {
                 drawHorizon();
+
+                // Draw Milky Way first as background
+                if (milkyWayData.length > 0) {
+                    drawMilkyWay(milkyWayData, lat, lst);
+                }
+
                 drawConstellations(constellationData, lat, lst);
                 drawStars(starData, lat, lst);
-                
+
                 // Format the date nicely
                 const formattedDate = new Date(date).toLocaleDateString('en-US', {
                     year: 'numeric', 
@@ -433,6 +840,10 @@
         
         // Add event listener for checkbox
         document.getElementById("showLabels").addEventListener("change", updateSkyMap);
+        document.getElementById("showMilkyWay").addEventListener("change", updateSkyMap);
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('close-popup').addEventListener('click', hideConstellationInfo);
+        });
     </script>
 </body>
 </html>
