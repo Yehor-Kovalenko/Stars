@@ -260,7 +260,7 @@
                 // Map phase names to corresponding icons
                 // You can replace these paths with your actual icon paths
                 const phaseIcons = {
-                    'New Moon': './icons/new-moon.svg',
+                    'Dark Moon': './icons/new-moon.svg',
                     'Waxing Crescent': './icons/waxing-crescent.svg',
                     'First Quarter': './icons/first-quarter.svg',
                     'Waxing Gibbous': './icons/waxing-gibbous.svg',
@@ -276,7 +276,7 @@
                 }
 
                 // Fallback logic based on illumination percentage if phase name doesn't match
-                if (illumination <= 0.05) return phaseIcons['New Moon'];
+                if (illumination <= 0.05) return phaseIcons['Dark Moon'];
                 if (illumination <= 0.45) return illumination <= 0.25 ? phaseIcons['Waxing Crescent'] : phaseIcons['First Quarter'];
                 if (illumination <= 0.95) return illumination <= 0.75 ? phaseIcons['Waxing Gibbous'] : phaseIcons['Full Moon'];
                 if (illumination <= 1.45) return illumination <= 1.25 ? phaseIcons['Waning Gibbous'] : phaseIcons['3rd Quarter'];
@@ -355,7 +355,7 @@
                 
                 // Set moon phase descriptions
                 const descriptions = {
-                    "New Moon": "The New Moon represents new beginnings and fresh starts. It's a time to plant seeds of intention for the lunar cycle ahead.",
+                    "Dark Moon": "The Dark Moon represents new beginnings and fresh starts. It's a time to plant seeds of intention for the lunar cycle ahead.",
                     "Waxing Crescent": "The Waxing Crescent moon is a time of growth and manifestation. Energy is building as the moon grows.",
                     "First Quarter": "The First Quarter moon represents decision and action. It's time to overcome challenges and push forward.",
                     "Waxing Gibbous": "The Waxing Gibbous moon is about refinement and perfection. Focus on adjusting your path as you near completion.",
@@ -412,10 +412,10 @@
             // Function to get phase-specific facts
             function getPhaseSpecificFact(phase) {
                 const phaseFacts = {
-                    "New Moon": [
-                        "The New Moon is the best time to set intentions and plant seeds for new beginnings. 🌑",
-                        "During a New Moon, the Moon is between the Earth and the Sun, making it invisible to us. 🌚",
-                        "Historically, many cultures used the New Moon to mark the start of a new month."
+                    "Dark Moon": [
+                        "The Dark Moon is the best time to set intentions and plant seeds for new beginnings. 🌑",
+                        "During a Dark Moon, the Moon is between the Earth and the Sun, making it invisible to us. 🌚",
+                        "Historically, many cultures used the Dark Moon to mark the start of a new month."
                     ],
                     "Waxing Crescent": [
                         "The Waxing Crescent phase is a time for growth and building momentum. 🌒",
@@ -534,7 +534,7 @@
             
             // Calculate moon phase locally (simplified algorithm)
             function getMoonPhaseFallback(date) {
-                // Known new moon date for reference
+                // Known Dark Moon date for reference
                 const knownNewMoon = new Date(2023, 0, 21); // January 21, 2023
                 const daysSinceKnownNewMoon = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
                 
@@ -547,7 +547,7 @@
             function getMoonPhaseNameFallback(date) {
                 const phase = getMoonPhaseFallback(date);
                 
-                if (phase < 0.025 || phase >= 0.975) return "New Moon";
+                if (phase < 0.025 || phase >= 0.975) return "Dark Moon";
                 else if (phase < 0.225) return "Waxing Crescent";
                 else if (phase < 0.275) return "First Quarter";
                 else if (phase < 0.475) return "Waxing Gibbous";
@@ -579,7 +579,7 @@
                 const moonPhase = getMoonPhaseNameFallback(date);
                 
                 const phaseMessages = {
-                    "New Moon": "This is a powerful time for new beginnings. Set intentions and focus on what you want to manifest.",
+                    "Dark Moon": "This is a powerful time for new beginnings. Set intentions and focus on what you want to manifest.",
                     "Waxing Crescent": "Your energy is building. Take action toward your goals and trust in your abilities.",
                     "First Quarter": "You may face challenges today. Stay determined and make decisions that align with your values.",
                     "Waxing Gibbous": "Fine-tune your projects and make final adjustments. Perfection is within reach.",
