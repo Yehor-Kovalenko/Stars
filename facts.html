@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Phase & Astrology</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-image: radial-gradient(circle at top right, rgba(30, 41, 59, 0.8), rgba(17, 24, 39, 0.4));
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #f0f0f0;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .input-section {
+            background-color: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        input {
+            padding: 10px;
+            font-size: 1rem;
+            background-color: #2d3748;
+            color: white;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .results {
+            display: none;
+            background-color: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .moon-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .moon-image {
+            width: 150px;
+            height: 150px;
+            margin-right: 20px;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        .moon-info {
+            flex: 1;
+        }
+        .card {
+            background-color: rgba(45, 55, 72, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h3 {
+            color: #a78bfa;
+            margin-top: 0;
+            border-bottom: 1px solid #4a5568;
+            padding-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #a78bfa;
+            display: none;
+        }
+        .error-message {
+            background-color: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        @keyframes glow {
+            0% { text-shadow: 0 0 5px #a78bfa, 0 0 10px #a78bfa; }
+            50% { text-shadow: 0 0 20px #a78bfa, 0 0 30px #a78bfa; }
+            100% { text-shadow: 0 0 5px #a78bfa, 0 0 10px #a78bfa; }
+        }
+        .glow-text {
+            animation: glow 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✧ Celestial Insights ✧</h1>
+        <p>Discover the moon's phase and astrological insights for any date</p>
+    </header>
+
+    <div class="input-section">
+        <!-- <button id="get-info">Reveal Celestial Secrets</button> -->
+        <div class="error-message" id="error-message">Unable to fetch all data. Please try again later.</div>
+    </div>
+
+    <div class="loading" id="loading">
+        <p class="glow-text">Consulting the stars...</p>
+    </div>
+
+    <div class="results" id="results">
+        <div class="moon-section">
+            <img src="./icons/moon_placeholder1.jpg" alt="Moon Phase" id="moon-image" class="moon-image">
+            <div class="moon-info">
+                <h2 id="moon-phase-title">Full Moon</h2>
+                <p id="moon-date">October 15, 2023</p>
+                <p id="moon-description">The Full Moon illuminates the night sky, revealing hidden truths and bringing emotions to the surface.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Moon Phase Facts</h3>
+            <div id="moon-facts">
+                <p>Loading moon phase data...</p>
+            </div>
+        </div>
+
+        <!-- <div class="card">
+            <h3>Astrological Events</h3>
+            <div id="astro-events">
+                <p>Loading astrological events...</p>
+            </div>
+        </div> -->
+
+        <div class="card">
+            <h3>Daily Horoscope</h3>
+            <div id="horoscope">
+                <p>Loading horoscope data...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // const getInfoButton = document.getElementById('get-info');
+            const resultsSection = document.getElementById('results');
+            const loadingSection = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const moonImage = document.getElementById('moon-image');
+            const moonPhaseTitle = document.getElementById('moon-phase-title');
+            const moonDate = document.getElementById('moon-date');
+            const moonDescription = document.getElementById('moon-description');
+            const moonFacts = document.getElementById('moon-facts');
+            const astroEvents = document.getElementById('astro-events');
+            const horoscope = document.getElementById('horoscope');
+            
+
+            // get the date from the URL query parameter
+            // if no query parameter specified then set default date to today
+            const urlParams = new URLSearchParams(window.location.search); 
+            let today;
+
+            // Check if date parameter exists in URL
+            if (urlParams.has('date') && urlParams.get('date')) {
+                // Convert string date to Date object
+                const dateString = urlParams.get('date');
+                today = new Date(dateString);
+                
+                // Fallback in case the date is invalid
+                if (isNaN(today.getTime())) {
+                    today = new Date();
+                }
+            } else {
+                // Default to today if no date parameter
+                today = new Date();
+            }
+            
+            // Format the date as YYYY-MM-DD
+            const formattedDate = today.toISOString().split('T')[0];
+            
+            // Show loading, hide error message
+            loadingSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            errorMessage.style.display = 'none';
+            
+            // Get the selected date
+            const selectedDate = new Date(formattedDate);
+            
+            // Format date for API requests
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate.getDate()).padStart(2, '0');
+            const formattedAPIDate = `${year}-${month}-${day}`;
+            
+            // Display formatted date
+            const formattedDisplayDate = selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            moonDate.textContent = formattedDisplayDate;
+            
+            // Fetch Moon Phase data from Farmsense API
+            fetchMoonPhase(formattedAPIDate)
+                .then(moonData => {
+                    // Hide loading and show results
+                    loadingSection.style.display = 'none';
+                    resultsSection.style.display = 'block';
+                    
+                    // Update moon phase information
+                    updateMoonInfo(moonData);
+                    
+                    // Fetch astrological events
+                    return fetchAstronomicalEvents(formattedAPIDate);
+                })
+                //.then(astroData => {
+                    // Update astrological events
+                    //fetch horoscope
+                    //return fetchHoroscope(selectedDate);
+                //})
+                //.then(horoscopeData => {
+                //    // Update horoscope information
+                //    updateHoroscope(horoscopeData);
+                //})
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    loadingSection.style.display = 'none';
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = 'Unable to fetch all data. Please try again later.';
+                });
+            
+            function getMoonPhaseIcon(phaseData) {
+                // Extract the phase name or use the numeric phase value
+                const phaseName = phaseData.Phase || '';
+                const illumination = phaseData.Illumination || 0;
+
+                // Map phase names to corresponding icons
+                // You can replace these paths with your actual icon paths
+                const phaseIcons = {
+                    'New Moon': './icons/new-moon.svg',
+                    'Waxing Crescent': './icons/waxing-crescent.svg',
+                    'First Quarter': './icons/first-quarter.svg',
+                    'Waxing Gibbous': './icons/waxing-gibbous.svg',
+                    'Full Moon': './icons/full-moon.svg',
+                    'Waning Gibbous': './icons/waning-gibbous.svg',
+                    'Last Quarter': './icons/last-quarter.svg',
+                    'Waning Crescent': './icons/waning-crescent.svg'
+                };
+
+                // If we have a direct match, use it
+                if (phaseIcons[phaseName]) {
+                    return phaseIcons[phaseName];
+                }
+
+                // Fallback logic based on illumination percentage if phase name doesn't match
+                if (illumination <= 0.05) return phaseIcons['New Moon'];
+                if (illumination <= 0.45) return illumination <= 0.25 ? phaseIcons['Waxing Crescent'] : phaseIcons['First Quarter'];
+                if (illumination <= 0.95) return illumination <= 0.75 ? phaseIcons['Waxing Gibbous'] : phaseIcons['Full Moon'];
+                if (illumination <= 1.45) return illumination <= 1.25 ? phaseIcons['Waning Gibbous'] : phaseIcons['Last Quarter'];
+                return phaseIcons['Waning Crescent'];
+            }
+
+            // Function to fetch moon phase data
+            async function fetchMoonPhase(date) {
+                try {
+                    // Convert date to timestamp for Farmsense API
+                    const timestamp = Math.floor(new Date(date).getTime() / 1000);
+                    const response = await fetch(`https://api.farmsense.net/v1/moonphases/?d=${timestamp}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('Moon phase API request failed');
+                    }
+                    
+                    const data = await response.json();
+                    return data[0]; // Return the first (and only) result
+                } catch (error) {
+                    console.error('Error fetching moon phase:', error);
+                    // Fallback to calculating moon phase locally
+                    return {
+                        Phase: getMoonPhaseNameFallback(date),
+                        Illumination: Math.round(getMoonIlluminationFallback(date) * 100) / 100,
+                        Age: Math.round(getMoonAgeFallback(date) * 10) / 10
+                    };
+                }
+            }
+            
+            // Function to fetch horoscope data
+            async function fetchHoroscope(date) {
+                try {
+                    // Determine sun sign based on date
+                    const sunSign = getSunSign(date);
+                    
+                    // Use Aztro API for horoscope
+                    const response = await fetch(`https://aztro.sameerkumar.website/?sign=${sunSign}&day=today`, {
+                        method: 'POST'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Horoscope API request failed');
+                    }
+                    
+                    const data = await response.json();
+                    return {
+                        sunSign: sunSign,
+                        ...data
+                    };
+                } catch (error) {
+                    console.error('Error fetching horoscope:', error);
+                    // Fallback to generated horoscope
+                    return {
+                        sunSign: getSunSign(date),
+                        description: getHoroscopeFallback(date),
+                        compatibility: "N/A",
+                        mood: "Balanced",
+                        color: "Blue",
+                        lucky_number: "7",
+                        lucky_time: "3:00 PM"
+                    };
+                }
+            }
+            
+            // Function to update moon phase information
+            function updateMoonInfo(moonData) {
+                // Update moon phase title and description
+                const phaseName = moonData.Phase;
+                moonPhaseTitle.textContent = phaseName;
+
+                // Update the moon image
+                const moonImage = document.getElementById('moon-image');
+                moonImage.src = getMoonPhaseIcon(moonData);
+                moonImage.alt = `${phaseName} Moon Phase`;
+                
+                // Set moon phase descriptions
+                const descriptions = {
+                    "New Moon": "The New Moon represents new beginnings and fresh starts. It's a time to plant seeds of intention for the lunar cycle ahead.",
+                    "Waxing Crescent": "The Waxing Crescent moon is a time of growth and manifestation. Energy is building as the moon grows.",
+                    "First Quarter": "The First Quarter moon represents decision and action. It's time to overcome challenges and push forward.",
+                    "Waxing Gibbous": "The Waxing Gibbous moon is about refinement and perfection. Focus on adjusting your path as you near completion.",
+                    "Full Moon": "The Full Moon illuminates the night sky, revealing hidden truths and bringing emotions to the surface. It's a time of culmination and clarity.",
+                    "Waning Gibbous": "The Waning Gibbous moon is about gratitude and sharing. It's time to give back and reflect on what you've received.",
+                    "Last Quarter": "The Last Quarter moon represents release and forgiveness. It's time to let go of what no longer serves you.",
+                    "Waning Crescent": "The Waning Crescent moon (or Balsamic Moon) is about surrender and rest. It's time to prepare for a new cycle."
+                };
+                
+                moonDescription.textContent = descriptions[phaseName] || 
+                    "This lunar phase brings unique cosmic energies. Pay attention to your intuition and the subtle rhythms of nature.";
+                
+                // Generate moon facts
+                const date = new Date(moonData.date || moonDate.textContent);
+                const month = date.toLocaleDateString('en-US', { month: 'long' });
+                
+                // Get traditional full moon names
+                const fullMoonNames = {
+                    "January": "Wolf Moon",
+                    "February": "Snow Moon",
+                    "March": "Worm Moon",
+                    "April": "Pink Moon",
+                    "May": "Flower Moon",
+                    "June": "Strawberry Moon",
+                    "July": "Buck Moon",
+                    "August": "Sturgeon Moon",
+                    "September": "Harvest Moon",
+                    "October": "Hunter's Moon",
+                    "November": "Beaver Moon",
+                    "December": "Cold Moon"
+                };
+                
+                // Get moon zodiac sign (simplified)
+                const moonZodiacSign = getMoonSign(date);
+                
+                let factsHTML = '';
+                
+                factsHTML += `<p>The Moon is currently ${Math.round(moonData.Illumination * 100)}% illuminated.</p>`;
+                factsHTML += `<p>The Moon is ${moonData.Age} days into its lunar cycle (29.53 days total).</p>`;
+                
+                if (phaseName === "Full Moon") {
+                    factsHTML += `<p>This Full Moon is known as the "${fullMoonNames[month]}" in the Northern Hemisphere.</p>`;
+                }
+                
+                factsHTML += `<p>The Moon is currently in the sign of ${moonZodiacSign}, influencing your ${getZodiacInfluence(moonZodiacSign)}.</p>`;
+                
+                // Add a random fact
+                const randomFacts = [
+                    "During a Full Moon, you might experience more vivid dreams or disrupted sleep patterns.",
+                    "The gravitational pull of the Moon is stronger during New and Full Moons, causing higher tides.",
+                    "The Moon is moving away from Earth at a rate of 3.8 centimeters per year.",
+                    "The same side of the Moon always faces the Earth due to 'tidal locking'.",
+                    "Gardeners often plant according to Moon phases, with root crops planted during the waning Moon and above-ground crops during the waxing Moon."
+                ];
+                
+                factsHTML += `<p>${randomFacts[Math.floor(Math.random() * randomFacts.length)]}</p>`;
+                
+                moonFacts.innerHTML = factsHTML;
+            }
+            
+            // Function to update horoscope information
+            function updateHoroscope(horoscopeData) {
+                let horoscopeHTML = '';
+                
+                horoscopeHTML += `<p><strong>${horoscopeData.sunSign}</strong>: ${horoscopeData.description}</p>`;
+                horoscopeHTML += `<p>Compatible with: ${horoscopeData.compatibility}</p>`;
+                horoscopeHTML += `F<p>Lucky Number: ${horoscopeData.lucky_number} | Color: ${horoscopeData.color} | Best time: ${horoscopeData.lucky_time}</p>`;
+                horoscopeHTML += `<p>Mood: ${horoscopeData.mood}</p>`;
+                
+                horoscope.innerHTML = horoscopeHTML;
+            }
+            
+            // Sun Sign determination
+            function getSunSign(date) {
+                const month = date.getMonth() + 1; // JavaScript months are 0-based
+                const day = date.getDate();
+                
+                if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+                if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+                if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+                if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+                if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+                if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+                if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+                if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+                if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+                if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+                if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
+                return "Pisces";
+            }
+            
+            // Moon Sign determination (simplified)
+            function getMoonSign(date) {
+                // This is a simplified calculation. 
+                // A proper calculation would require ephemeris data
+                const signs = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", 
+                               "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+                
+                // Use simplified formula based on date 
+                // (this is not accurate but works for demonstration)
+                const dayOfYear = getDayOfYear(date);
+                const moonCycle = Math.floor(dayOfYear % 29.5); // Moon takes ~29.5 days to travel through all signs
+                const signIndex = Math.floor(moonCycle / 2.5); // ~2.5 days per sign
+                
+                return signs[signIndex % 12];
+            }
+            
+            function getDayOfYear(date) {
+                const start = new Date(date.getFullYear(), 0, 0);
+                const diff = date - start;
+                const oneDay = 1000 * 60 * 60 * 24;
+                return Math.floor(diff / oneDay);
+            }
+            
+            function getZodiacInfluence(sign) {
+                const influences = {
+                    "Aries": "energy and initiative",
+                    "Taurus": "stability and determination",
+                    "Gemini": "communication and adaptability",
+                    "Cancer": "emotions and intuition",
+                    "Leo": "creativity and self-expression",
+                    "Virgo": "analytical skills and attention to detail",
+                    "Libra": "balance and relationships",
+                    "Scorpio": "transformation and intensity",
+                    "Sagittarius": "optimism and exploration",
+                    "Capricorn": "discipline and responsibility",
+                    "Aquarius": "innovation and humanitarianism",
+                    "Pisces": "compassion and spiritual connection"
+                };
+                
+                return influences[sign];
+            }
+            
+            // Fallback functions in case APIs fail
+            
+            // Calculate moon phase locally (simplified algorithm)
+            function getMoonPhaseFallback(date) {
+                // Known new moon date for reference
+                const knownNewMoon = new Date(2023, 0, 21); // January 21, 2023
+                const daysSinceKnownNewMoon = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+                
+                // Moon cycle is approximately 29.53 days
+                const phase = (daysSinceKnownNewMoon % 29.53) / 29.53;
+                
+                return phase;
+            }
+            
+            function getMoonPhaseNameFallback(date) {
+                const phase = getMoonPhaseFallback(date);
+                
+                if (phase < 0.025 || phase >= 0.975) return "New Moon";
+                else if (phase < 0.225) return "Waxing Crescent";
+                else if (phase < 0.275) return "First Quarter";
+                else if (phase < 0.475) return "Waxing Gibbous";
+                else if (phase < 0.525) return "Full Moon";
+                else if (phase < 0.725) return "Waning Gibbous";
+                else if (phase < 0.775) return "Last Quarter";
+                else return "Waning Crescent";
+            }
+            
+            function getMoonIlluminationFallback(date) {
+                const phase = getMoonPhaseFallback(date);
+                
+                // Calculate illumination (simplified)
+                if (phase <= 0.5) {
+                    return phase * 2; // 0 to 1 during waxing phase
+                } else {
+                    return (1 - phase) * 2; // 1 to 0 during waning phase
+                }
+            }
+            
+            function getMoonAgeFallback(date) {
+                const phase = getMoonPhaseFallback(date);
+                return phase * 29.53; // Age in days
+            }
+            
+            function getHoroscopeFallback(date) {
+                // Simplified horoscope generation based on sun sign and moon phase
+                const sunSign = getSunSign(date);
+                const moonPhase = getMoonPhaseNameFallback(date);
+                
+                const phaseMessages = {
+                    "New Moon": "This is a powerful time for new beginnings. Set intentions and focus on what you want to manifest.",
+                    "Waxing Crescent": "Your energy is building. Take action toward your goals and trust in your abilities.",
+                    "First Quarter": "You may face challenges today. Stay determined and make decisions that align with your values.",
+                    "Waxing Gibbous": "Fine-tune your projects and make final adjustments. Perfection is within reach.",
+                    "Full Moon": "Emotions are heightened. Be mindful of your reactions and use this energy for creative expression.",
+                    "Waning Gibbous": "Time to share what you've learned and express gratitude for your achievements.",
+                    "Last Quarter": "Release what no longer serves you. Let go of limiting beliefs and create space for new energy.",
+                    "Waning Crescent": "Rest and recharge. Prepare yourself for the next cycle of growth."
+                };
+                
+                const signMessages = {
+                    "Aries": "Your natural leadership abilities are enhanced. Take initiative in projects that excite you.",
+                    "Taurus": "Focus on stability and building solid foundations. Patience will bring rewards.",
+                    "Gemini": "Your communication skills are highlighted. Express your ideas and connect with others.",
+                    "Cancer": "Trust your intuition and nurture important relationships. Home matters take priority.",
+                    "Leo": "Your creative potential is at a peak. Step into the spotlight and share your gifts.",
+                    "Virgo": "Pay attention to details and improve your routines. Small changes lead to significant results.",
+                    "Libra": "Seek harmony in relationships and make fair compromises. Beauty surrounds you.",
+                    "Scorpio": "Embrace transformation and explore beneath the surface. Your intensity is your strength.",
+                    "Sagittarius": "Expand your horizons through learning or travel. Optimism attracts opportunities.",
+                    "Capricorn": "Focus on long-term goals and take responsibility for your path. Structure creates freedom.",
+                    "Aquarius": "Innovative ideas flow easily. Connect with community and humanitarian causes.",
+                    "Pisces": "Your spiritual insights are profound. Artistic expression and compassion are your gifts."
+                };
+                
+                return `${phaseMessages[moonPhase]} ${signMessages[sunSign]}`;
+            }
+            
+            
+            // Initialize with today's date
+            getInfoButton.click();
+        });
+    </script>
+</body>
+</html>

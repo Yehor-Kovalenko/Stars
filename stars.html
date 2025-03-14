@@ -71,8 +71,8 @@
 <body>
     <div id="controls">
         <form id="skyForm">
-            <label for="date">Date:</label>
-            <input type="date" id="date">
+            <!-- <label for="date">Date:</label> -->
+            <!-- <input type="date" id="date"> -->
             <label for="latitude">Latitude:</label>
             <input type="number" id="latitude" step="0.01" value="43.6532">
             <label for="longitude">Longitude:</label>
@@ -372,13 +372,29 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Use current date if not specified
-            const dateInput = document.getElementById("date");
-            if (!dateInput.value) {
-                const today = new Date();
-                dateInput.value = today.toISOString().split('T')[0];
+            // get the date from the URL query parameter
+            // if no query parameter specified then set default date to today
+            const urlParams = new URLSearchParams(window.location.search); 
+            let today;
+
+            // Check if date parameter exists in URL
+            if (urlParams.has('date') && urlParams.get('date')) {
+                // Convert string date to Date object
+                const dateString = urlParams.get('date');
+                today = new Date(dateString);
+                
+                // Fallback in case the date is invalid
+                if (isNaN(today.getTime())) {
+                    today = new Date();
+                }
+            } else {
+                // Default to today if no date parameter
+                today = new Date();
             }
             
-            const date = dateInput.value;
+            // Format the date as YYYY-MM-DD
+            const date = today.toISOString().split('T')[0];
+            
             const lat = parseFloat(document.getElementById("latitude").value);
             const lon = parseFloat(document.getElementById("longitude").value);
             const lst = localSiderealTime(date, lon);
