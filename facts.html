@@ -165,7 +165,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // const getInfoButton = document.getElementById('get-info');
             const resultsSection = document.getElementById('results');
             const loadingSection = document.getElementById('loading');
             const errorMessage = document.getElementById('error-message');
@@ -235,7 +234,7 @@
                     updateMoonInfo(moonData);
                     
                     // Fetch astrological events
-                    return fetchAstronomicalEvents(formattedAPIDate);
+                    //return fetchAstronomicalEvents(formattedAPIDate);
                 })
                 //.then(astroData => {
                     // Update astrological events
@@ -267,7 +266,7 @@
                     'Waxing Gibbous': './icons/waxing-gibbous.svg',
                     'Full Moon': './icons/full-moon.svg',
                     'Waning Gibbous': './icons/waning-gibbous.svg',
-                    'Last Quarter': './icons/last-quarter.svg',
+                    '3rd Quarter': './icons/last-quarter.svg',
                     'Waning Crescent': './icons/waning-crescent.svg'
                 };
 
@@ -280,7 +279,7 @@
                 if (illumination <= 0.05) return phaseIcons['New Moon'];
                 if (illumination <= 0.45) return illumination <= 0.25 ? phaseIcons['Waxing Crescent'] : phaseIcons['First Quarter'];
                 if (illumination <= 0.95) return illumination <= 0.75 ? phaseIcons['Waxing Gibbous'] : phaseIcons['Full Moon'];
-                if (illumination <= 1.45) return illumination <= 1.25 ? phaseIcons['Waning Gibbous'] : phaseIcons['Last Quarter'];
+                if (illumination <= 1.45) return illumination <= 1.25 ? phaseIcons['Waning Gibbous'] : phaseIcons['3rd Quarter'];
                 return phaseIcons['Waning Crescent'];
             }
 
@@ -362,7 +361,7 @@
                     "Waxing Gibbous": "The Waxing Gibbous moon is about refinement and perfection. Focus on adjusting your path as you near completion.",
                     "Full Moon": "The Full Moon illuminates the night sky, revealing hidden truths and bringing emotions to the surface. It's a time of culmination and clarity.",
                     "Waning Gibbous": "The Waning Gibbous moon is about gratitude and sharing. It's time to give back and reflect on what you've received.",
-                    "Last Quarter": "The Last Quarter moon represents release and forgiveness. It's time to let go of what no longer serves you.",
+                    "3rd Quarter": "The 3rd Quarter moon represents release and forgiveness. It's time to let go of what no longer serves you.",
                     "Waning Crescent": "The Waning Crescent moon (or Balsamic Moon) is about surrender and rest. It's time to prepare for a new cycle."
                 };
                 
@@ -394,27 +393,68 @@
                 
                 let factsHTML = '';
                 
-                factsHTML += `<p>The Moon is currently ${Math.round(moonData.Illumination * 100)}% illuminated.</p>`;
-                factsHTML += `<p>The Moon is ${moonData.Age} days into its lunar cycle (29.53 days total).</p>`;
-                
+                factsHTML += `<p><strong>🌕 Illumination:</strong> ${Math.round(moonData.Illumination * 100)}% illuminated.</p>`;
+                factsHTML += `<p><strong>⏳ Lunar Cycle:</strong> ${moonData.Age} days into its lunar cycle (29.53 days total).</p>`;
+
                 if (phaseName === "Full Moon") {
-                    factsHTML += `<p>This Full Moon is known as the "${fullMoonNames[month]}" in the Northern Hemisphere.</p>`;
+                    factsHTML += `<p><strong>✨ Full Moon Name:</strong> "${fullMoonNames[month]}" in the Northern Hemisphere. 🐺</p>`;
                 }
                 
-                factsHTML += `<p>The Moon is currently in the sign of ${moonZodiacSign}, influencing your ${getZodiacInfluence(moonZodiacSign)}.</p>`;
-                
-                // Add a random fact
-                const randomFacts = [
-                    "During a Full Moon, you might experience more vivid dreams or disrupted sleep patterns.",
-                    "The gravitational pull of the Moon is stronger during New and Full Moons, causing higher tides.",
-                    "The Moon is moving away from Earth at a rate of 3.8 centimeters per year.",
-                    "The same side of the Moon always faces the Earth due to 'tidal locking'.",
-                    "Gardeners often plant according to Moon phases, with root crops planted during the waning Moon and above-ground crops during the waxing Moon."
-                ];
-                
-                factsHTML += `<p>${randomFacts[Math.floor(Math.random() * randomFacts.length)]}</p>`;
-                
+                factsHTML += `<p><strong>♈ Moon Sign:</strong> The Moon is in ${moonZodiacSign}, influencing your ${getZodiacInfluence(moonZodiacSign)}. 🌠</p>`;
+
+                // Get a random fact specific to the Moon Phase
+                const phaseSpecificFact = getPhaseSpecificFact(phaseName);
+                factsHTML += `<p><strong>💡 Did You Know?</strong> ${phaseSpecificFact}</p>`;
+
                 moonFacts.innerHTML = factsHTML;
+            }
+
+            // Function to get phase-specific facts
+            function getPhaseSpecificFact(phase) {
+                const phaseFacts = {
+                    "New Moon": [
+                        "The New Moon is the best time to set intentions and plant seeds for new beginnings. 🌑",
+                        "During a New Moon, the Moon is between the Earth and the Sun, making it invisible to us. 🌚",
+                        "Historically, many cultures used the New Moon to mark the start of a new month."
+                    ],
+                    "Waxing Crescent": [
+                        "The Waxing Crescent phase is a time for growth and building momentum. 🌒",
+                        "During this phase, the Moon appears as a sliver in the sky, growing larger each night. 🌙",
+                        "This phase is associated with taking action and moving forward with your plans."
+                    ],
+                    "First Quarter": [
+                        "The First Quarter Moon is a time of decision and action, when challenges arise. 🌓",
+                        "At this phase, half of the Moon's visible surface is illuminated. 🌜",
+                        "This phase symbolizes overcoming obstacles and pushing through resistance."
+                    ],
+                    "Waxing Gibbous": [
+                        "The Waxing Gibbous phase is about refinement and making adjustments as you approach completion. 🌔",
+                        "During this phase, the illuminated portion of the Moon continues to increase. 🌛",
+                        "This phase is associated with patience and perseverance."
+                    ],
+                    "Full Moon": [
+                        "The Full Moon is a time of culmination and heightened emotions. 🌕",
+                        "During a Full Moon, the entire visible surface of the Moon is illuminated. 🌝",
+                        "Historically, Full Moons have been associated with increased energy and heightened awareness."
+                    ],
+                    "Waning Gibbous": [
+                        "The Waning Gibbous phase is a time for gratitude and reflection. 🌖",
+                        "During this phase, the illuminated portion of the Moon begins to decrease. 🌛",
+                        "This phase is associated with sharing and giving back."
+                    ],
+                    "3rd Quarter": [
+                        "The 3rd Quarter Moon is a time for releasing and letting go of what no longer serves you. 🌗",
+                        "At this phase, half of the Moon's visible surface is illuminated again. 🌜",
+                        "This phase symbolizes closure and preparing for a new cycle."
+                    ],
+                    "Waning Crescent": [
+                        "The Waning Crescent phase is a time for rest and surrender, preparing for a new cycle. 🌘",
+                        "During this phase, the Moon appears as a sliver in the sky, decreasing in size each night. 🌙",
+                        "This phase is associated with introspection and preparing for renewal."
+                    ]
+                };
+                const facts = phaseFacts[phase] || ["No specific fact found for this phase."];
+                return facts[Math.floor(Math.random() * facts.length)]
             }
             
             // Function to update horoscope information
@@ -513,7 +553,7 @@
                 else if (phase < 0.475) return "Waxing Gibbous";
                 else if (phase < 0.525) return "Full Moon";
                 else if (phase < 0.725) return "Waning Gibbous";
-                else if (phase < 0.775) return "Last Quarter";
+                else if (phase < 0.775) return "3rd Quarter";
                 else return "Waning Crescent";
             }
             
@@ -545,7 +585,7 @@
                     "Waxing Gibbous": "Fine-tune your projects and make final adjustments. Perfection is within reach.",
                     "Full Moon": "Emotions are heightened. Be mindful of your reactions and use this energy for creative expression.",
                     "Waning Gibbous": "Time to share what you've learned and express gratitude for your achievements.",
-                    "Last Quarter": "Release what no longer serves you. Let go of limiting beliefs and create space for new energy.",
+                    "3rd Quarter": "Release what no longer serves you. Let go of limiting beliefs and create space for new energy.",
                     "Waning Crescent": "Rest and recharge. Prepare yourself for the next cycle of growth."
                 };
                 
@@ -569,7 +609,6 @@
             
             
             // Initialize with today's date
-            getInfoButton.click();
         });
     </script>
 </body>
