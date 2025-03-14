@@ -18,7 +18,7 @@
         canvas { 
             display: block;
         }
-        #controls { 
+        /* #controls { 
             position: absolute; 
             top: 5%; 
             left: 50%;  
@@ -27,8 +27,212 @@
             background-color: rgba(25, 29, 41, 0.7);
             padding: 10px;
             border-radius: 8px;
+        } */
+        .controls {
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            z-index: 10;
+            width: 90%;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 10px;
+            border-radius: 8px;
         }
-        input, button {
+        .switch-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .switch__text {
+            font-size: 16px;
+            color: white;
+        }
+        .switch__input {
+            clip: rect(1px, 1px, 1px, 1px);
+            clip-path: inset(50%);
+            height: 1px;
+            width: 1px;
+            margin: -1px;
+            overflow: hidden;
+            padding: 0;
+            position: absolute;
+        }
+        
+        .switch__label {
+            position: relative;
+            display: inline-block;
+            width: 120px;
+            height: 60px;
+            background-color: #2B2B2B;
+            border: 5px solid #5B5B5B;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(.46,.03,.52,.96);
+        }
+        
+        .switch__indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateX(-72%);
+            display: block;
+            width: 40px;
+            height: 40px;
+            background-color: #7B7B7B;
+            border-radius: 9999px;
+            box-shadow: 10px 0px 0 0 rgba(#000000, 0.2) inset;
+        
+            &::before,
+            &::after {
+                position: absolute;
+                content: '';
+                display: block;
+                background-color: #FFFFFF;
+                border-radius: 9999px;
+            }
+        
+            &::before {
+                top: 7px;
+                left: 7px;
+                width: 9px;
+                height: 9px;
+                background-color: #FFFFFF;
+                opacity: 0.6;
+            }
+        
+            &::after {
+                bottom: 8px;
+                right: 6px;
+                width: 14px;
+                height: 14px;
+                background-color: #FFFFFF;
+                opacity: 0.8;
+            }
+        }
+        
+        .switch__decoration {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            display: block;
+            width: 5px;
+            height: 5px;
+            background-color: #FFFFFF;
+            border-radius: 9999px;
+            animation: twinkle 0.8s infinite -0.6s;
+        
+            &::before,
+            &::after {
+                position: absolute;
+                display: block;
+                content: '';
+                width: 5px;
+                height: 5px;
+                background-color: #FFFFFF;
+                border-radius: 9999px;
+            }
+        
+            &::before {
+                top: -20px;
+                left: 10px;
+                opacity: 1;
+                animation: twinkle 0.6s infinite;
+            }
+        
+            &::after {
+                top: -7px;
+                left: 30px;
+                animation: twinkle 0.6s infinite -0.2s;
+            }
+        }
+        
+        @keyframes twinkle {
+            50% { opacity: 0.2; }
+        }
+        
+        .switch__indicator {
+            &,
+            &::before,
+            &::after {
+                transition: all 0.4s cubic-bezier(.46,.03,.52,.96);
+            }
+        }
+        
+        .switch__input:checked + .switch__label {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #8b5cf6;
+        
+            .switch__indicator {
+                background-color: #ECD21F;
+                box-shadow: none;
+                transform: translate(-50%, -50%) translateX(72%);
+            
+                &::before,
+                &::after {
+                    display: none;
+                }
+            }
+        
+            /* .switch__decoration {
+                top: 50%;
+                transform: translate(0%, -50%);
+                animation: cloud 8s linear infinite;
+            
+                width: 20px;
+                height: 20px;
+            
+                &::before {
+                    width: 10px;
+                    height: 10px;
+                    top: auto;
+                    bottom: 0;
+                    left: -8px;
+                    animation: none;
+                }
+            
+                &::after {
+                    width: 15px;
+                    height: 15px;
+                    top: auto;
+                    bottom: 0;
+                    left: 16px;
+                    animation: none;
+                }
+            
+                &,
+                &::before,
+                &::after {
+                    border-radius: 9999px 9999px 0 0;
+                }
+            
+                &::after {
+                    border-bottom-right-radius: 9999px;
+                }
+            } */
+        }
+        .switch__input:checked + .switch__label .switch__decoration {
+            display: none;
+            animation: none; /* Disable twinkle animation when checkbox is checked */
+        }
+        
+        @keyframes cloud {
+            0% {
+                transform: translate(0%, -50%);
+            }
+            50% {
+                transform: translate(-50%, -50%);
+            }
+            100% {
+                transform: translate(0%, -50%);
+            }
+        }
+
+        button { /* input was there */
             margin: 0 5px;
             padding: 5px;
             border-radius: 4px;
@@ -66,11 +270,89 @@
             font-size: 16px;
             z-index: 20;
         }
+        .loading-spinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure it is above everything */
+        }
+        .outside {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border: 1px solid #ffffe9;
+            border-radius: 50%;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+            animation: ro 5s infinite linear;
+        }
+
+        .star {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #ffe179;
+            left: 5px;
+            top: 5px;
+            position: absolute;
+            animation: ro 2.5s infinite linear;
+        }
+
+        .dot {
+            background: #000;
+            position: absolute;
+        
+        }
+
+        #dot1 {
+            width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            opacity: .2;
+            top: 20px;
+            left: 20px;
+        }
+
+        #dot2 {
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            opacity: .3;
+            top: 40px;
+            left: 40px;
+        }
+
+        #dot3 {
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            opacity: .4;
+            top: 48px;
+            left: 20px;
+        }
+
+        @keyframes ro {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <form id="skyForm">
+    <!-- <div id="controls">
+        <form id="skyForm"> -->
             <!-- <label for="date">Date:</label> -->
             <!-- <input type="date" id="date"> -->
             <!-- <label for="latitude">Latitude:</label>
@@ -78,15 +360,34 @@
             <label for="longitude">Longitude:</label>
             <input type="number" id="longitude" step="0.01" value="-79.3832"> -->
             <!-- <button type="submit">Show Sky</button> -->
-            <label for="showLabels">
-                <input type="checkbox" id="showLabels" checked> Show Labels
+            <!-- <label for="showLabels">
+                <input type="checkbox" id="showLabels" unchecked> Show Labels
             </label>
             <label for="showMilkyWay">
                 <input type="checkbox" id="showMilkyWay" checked> Milky Way
             </label>
         </form>
+    </div> -->
+    <div class="controls">
+        <div class="switch-group">
+            <span class="switch__text">Show Labels</span>
+            <input type="checkbox" class="switch__input" id="showLabels">
+            <label class="switch__label" for="showLabels">
+                <span class="switch__indicator"></span>
+                <span class="switch__decoration"></span>
+            </label>
+        </div>
+    
+        <div class="switch-group">
+            <input type="checkbox" class="switch__input" id="showMilkyWay">
+            <label class="switch__label" for="showMilkyWay">
+                <span class="switch__indicator"></span>
+                <span class="switch__decoration"></span>
+            </label>
+            <span class="switch__text">Milky Way</span>
+        </div>
     </div>
-    <div id="constellation-info"></div>
+    <!-- <div id="constellation-info"></div> -->
     <div id="status"></div>
     <canvas id="skyCanvas"></canvas>
     <div id="constellation-popup" style="display: none; position: absolute; background-color: rgba(25, 29, 41, 0.9); border-radius: 8px; padding: 15px; color: white; max-width: 300px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 100;">
@@ -95,11 +396,21 @@
         </div>
         <button id="close-popup" style="background-color: #334; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Close</button>
     </div>
+
+    <div id="loadingSpinner" class="loading-spinner" style="display:none;">
+        <div class="outside">
+            <div class="star">
+              <div class="dot" id="dot1"></div>
+              <div class="dot" id="dot2"></div>
+              <div class="dot" id="dot3"></div>
+            </div>  
+          </div>
+    </div>
     
     <script>
         const canvas = document.getElementById("skyCanvas");
         const ctx = canvas.getContext("2d");
-        const constellationInfo = document.getElementById("constellation-info");
+        // const constellationInfo = document.getElementById("constellation-info");
         const statusDiv = document.getElementById("status");
         let constellationData = [];
         let starData = [];
@@ -574,15 +885,18 @@
                 });
 
                 // Add label if there are valid points
-                if (validPointsCount > 0 && document.getElementById("showLabels").checked) {
+                if (validPointsCount > 0) {
                     centerX /= validPointsCount;
                     centerY /= validPointsCount;
 
-                    const label = document.createElement("div");
-                    label.className = "constellation-label";
-                    label.textContent = name;
-                    label.style.left = `${centerX}px`;
-                    label.style.top = `${centerY}px`;
+                    if (document.getElementById("showLabels").checked) {
+                        const label = document.createElement("div");
+                        label.className = "constellation-label";
+                        label.textContent = name;
+                        label.style.left = `${centerX}px`;
+                        label.style.top = `${centerY}px`;
+                        document.body.appendChild(label);
+                    }
                     // Store constellation info for click detection
                     // Calculate bounding box for the constellation
                     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -594,7 +908,7 @@
                     });
 
                     // Add padding to the bounding box
-                    const padding = 20;
+                    const padding = 7;
                     minX -= padding;
                     minY -= padding;
                     maxX += padding;
@@ -608,7 +922,6 @@
                         center: {x: centerX, y: centerY},
                         description: constellation.properties.description || getConstellationDescription(name)
                     });
-                    document.body.appendChild(label);
                 }
             });
             // Add click listener to the canvas
@@ -650,7 +963,7 @@
                 });
             });
 
-            constellationInfo.textContent = `Visible Constellations: ${visibleConstellations.length}`;
+            // constellationInfo.textContent = `Visible Constellations: ${visibleConstellations.length}`;
         } 
         
         // Function to show constellation info popup
@@ -674,7 +987,7 @@
 
             const mythologyElement = document.createElement('p');
             mythologyElement.innerHTML = `<strong>Mythology:</strong> ${constellation.description.mythology || 'Mythology not available.'}`;
-            mythologyElement.classList.dd('constelltion-mythology');
+            mythologyElement.classList.add('constellation-mythology');
 
             // Append elements to the container
             descriptionContainer.appendChild(nameElement);
@@ -945,12 +1258,12 @@
         }
 
         function drawCaption(location, date) {
-            ctx.fillStyle = "white";
-            ctx.font = "20px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("NIGHT SKY MAP", canvas.width / 2, canvas.height - 80);
-            ctx.fillText(location, canvas.width / 2, canvas.height - 50);
-            ctx.fillText(date, canvas.width / 2, canvas.height - 20);
+            // ctx.fillStyle = "white";
+            // ctx.font = "20px Arial";
+            // ctx.textAlign = "center";
+            // ctx.fillText("NIGHT SKY MAP", canvas.width / 2, canvas.height - 80);
+            // ctx.fillText(location, canvas.width / 2, canvas.height - 50);
+            // ctx.fillText(date, canvas.width / 2, canvas.height - 20);
         }
         
         async function initializeData() {
@@ -1046,8 +1359,31 @@
         initializeData();
         
         // Add event listener for checkbox
-        document.getElementById("showLabels").addEventListener("change", updateSkyMap);
-        document.getElementById("showMilkyWay").addEventListener("change", updateSkyMap);
+        document.getElementById("showLabels").addEventListener("change", function() {
+            window.requestAnimationFrame(() => {
+                updateSkyMap();
+            })
+        });
+        document.getElementById("showMilkyWay").addEventListener("change",  function() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            loadingSpinner.style.display = 'flex';
+            
+            this.disabled = true;
+            window.requestAnimationFrame(() => {
+                updateSkyMap();
+                hideSpinner
+            });
+            setTimeout(hideSpinner, 3000);
+        });
+        function hideSpinner() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            loadingSpinner.style.display = 'none';
+
+            // Re-enable the checkbox after the spinner is hidden
+            document.getElementById("showLabels").disabled = false;
+            document.getElementById("showMilkyWay").disabled = false;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('close-popup').addEventListener('click', hideConstellationInfo);
         });
