@@ -173,6 +173,26 @@
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
+
+        input[type="checkbox"]:disabled {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+            border: 2px solid #764ba2;
+            border-radius: 4px;
+            position: relative;
+        }
+        input[type="checkbox"]:disabled:checked::after {
+            content: "✔";
+            color: white;
+            font-size: 12px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -280,21 +300,49 @@
                 let activeButton = document.querySelector(".date-button.active");
                 // facts
                 const dateFacts = [
-                    { date: "2024-09-03", fact: "On this day, a space probe discovered a new exoplanet!" },
-                    { date: "2024-09-07", fact: "Astronomers detected an unusual radio signal from deep space." },
-                    { date: "2024-09-14", fact: "A rare planetary alignment was visible from Earth." },
-                    { date: "2024-09-22", fact: "A new moon crater was discovered by scientists." },
-                    { date: "2025-02-22", fact: "A meteor shower lit up the night sky across several continents." }
+                    { date: "2024-09-03", fact: "<h4>This day was the beginning of something <b><i class=\"glow-text\">new</i></b>, \
+                                                 something <i class=\"glow-text\">✧magical✧</i>, like the birth of a new world \
+                                                 that is just being created from nothing before our very eyes</h4>" },
+                    { date: "2024-09-07", fact: "<h4>Phones and the headphones died a few times but not the people. </br>\
+                                                Never have I thought that</h4> \
+                                                <h3><i>10 hours ⏰</i></h3> \
+                                                <h4>can pass so slowly 🐌 and so quickly 🐆 at the same time </h4> \
+                                                <hr>\
+                                                <h5><i>P.S. But even after talking, laughing, being hungry and sleepy for \
+                                                    10 hours I wanted to repeat that moment</i></h5>" },
+                    { date: "2024-09-14", fact: "<h4>Another city, first encounter, first guinness, first whole day together</h4>" },
+                    { date: "2024-09-22", fact: "<h4>Crazy night, crazy people, shopping cart, crazy hide-n-seek, crazy tree climbing, \
+                                                 crazy sleep</h4>" },
+                    { date: "2024-10-01", fact: "<h4><ul>\
+                                                    <li>Insight into the future</li>\
+                                                    <li>Demo version</li>\
+                                                    <li>Beta testing the life</li>\
+                                                    </ul></h4>\
+                                                <h4>It can be called differently, but what really matters, it were <i class=\"glow-text\">amazing</i> holidays</h4>\
+                                                <hr>\
+                                                <h5><i>P.S. Test version was so good that I would like to buy the <span class=\"glow-text\">Premium subscription</span></i> ⭐️</h5>" },
+                    { date: "2025-02-22", fact: "<h4>\
+                                                    <input type=\"checkbox\" id=\"myCheckbox1\" checked disabled>\
+                                                    <label for=\"myCheckbox1\">Fairy tale <i class=\"glow-text\">vibe</i></label></br>\
+                                                    <input type=\"checkbox\" id=\"myCheckbox2\" checked disabled>\
+                                                    <label for=\"myCheckbox2\"><i>Princess and Prince</i> of the ball</label></br>\
+                                                    <input type=\"checkbox\" id=\"myCheckbox3\" checked disabled>\
+                                                    <label for=\"myCheckbox3\">Crazy night</label></br>\
+                                                </h4>" },
+                    { date: "2025-02-28", fact: "<h4><i>\'Life is daring adventure or nothing at all\' (c)</i></h4>" },
+                    { date: "2025-03-22", fact: "<h4>Half a year, huge milestone and best half a year in the life</br> \
+                                                    But <i class=\"glow-text\">much much more</i> to cover</h4>"
+                                                 }
                 ];
                 let factText = "";
                 if (!activeButton) {
-                    factText = "Today dupa";
+                    factText = "<h4>Information about today</h4>";
                 } else {
                     let factEntry = dateFacts.find(entry => entry.date === date);
-                    factText = factEntry ? factEntry.fact : "No fact available for this date.";
+                    factText = factEntry ? factEntry.fact : "<p>No fact available for this date.</p>";
                 }
         
-                factsDiv.innerHTML = `<p>${factText}</p>`;
+                factsDiv.innerHTML = `${factText}`;
             }
             
             // Update content based on date and view selection
