@@ -155,12 +155,12 @@
             </div>
         </div> -->
 
-        <div class="card">
+        <!-- <div class="card">
             <h3>Daily Horoscope</h3>
             <div id="horoscope">
                 <p>Loading horoscope data...</p>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <script>
@@ -234,17 +234,12 @@
                     updateMoonInfo(moonData);
                     
                     // Fetch astrological events
-                    //return fetchAstronomicalEvents(formattedAPIDate);
-                })
-                //.then(astroData => {
-                    // Update astrological events
-                    //fetch horoscope
                     //return fetchHoroscope(selectedDate);
-                //})
-                //.then(horoscopeData => {
-                //    // Update horoscope information
-                //    updateHoroscope(horoscopeData);
-                //})
+                })
+                // .then(horoscopeData => {
+                //     // Update horoscope information
+                //     updateHoroscope(horoscopeData);
+                // })
                 .catch(error => {
                     console.error('Error fetching data:', error);
                     loadingSection.style.display = 'none';
